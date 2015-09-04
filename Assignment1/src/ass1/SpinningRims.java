@@ -16,7 +16,7 @@ public class SpinningRims extends GameObject {
 	private double[] myLineColour;
 	private double spinSpeed;
 	private static final double[] defaultColour = {1,0.85,0,1};
-	private static final double defaultSpeed = 180;
+	public static final double defaultSpeed = 180;
     
 	public SpinningRims(GameObject parent, double[] fillColour, double[] lineColour) {
 		super(parent);

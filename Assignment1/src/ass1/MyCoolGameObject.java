@@ -115,4 +115,19 @@ public class MyCoolGameObject extends GameObject {
 		
 	}
 	
+	public void update(double dt, Direction direction) {
+		switch (direction){
+		case LEFT:
+			rim1.setSpinSpeed(rim1.getSpinSpeed() + dt*SpinningRims.defaultSpeed);
+			rim2.setSpinSpeed(rim2.getSpinSpeed() + dt*SpinningRims.defaultSpeed);
+			break;
+		case RIGHT:
+			rim1.setSpinSpeed(rim1.getSpinSpeed() - dt*SpinningRims.defaultSpeed);
+			rim2.setSpinSpeed(rim2.getSpinSpeed() - dt*SpinningRims.defaultSpeed);
+			break;
+		default:
+			break;
+		}
+	}
+	
 }

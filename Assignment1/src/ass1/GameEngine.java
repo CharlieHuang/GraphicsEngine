@@ -1,5 +1,7 @@
 package ass1;
 
+import java.awt.event.KeyEvent;
+import java.awt.event.KeyListener;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,8 +19,12 @@ import javax.media.opengl.GLEventListener;
  *
  * @author malcolmr
  */
-public class GameEngine implements GLEventListener {
+public class GameEngine implements GLEventListener, KeyListener {
 
+	public static final double BORDER = 30;
+	private Direction movement;
+	private Direction aim;
+	
     private Camera myCamera;
     private long myTime;
 
@@ -29,6 +35,8 @@ public class GameEngine implements GLEventListener {
      */
     public GameEngine(Camera camera) {
         myCamera = camera;
+        movement = Direction.NONE;
+        aim = Direction.NONE;
     }
     
     /**
@@ -38,6 +46,8 @@ public class GameEngine implements GLEventListener {
     public void init(GLAutoDrawable drawable) {
         // initialise myTime
         myTime = System.currentTimeMillis();
+        Player player = Player.thePlayer;
+
     }
 
     @Override
@@ -83,14 +93,74 @@ public class GameEngine implements GLEventListener {
         double dt = (time - myTime) / 1000.0;
         myTime = time;
         
+        // Spawn things that need to be spawned
+        Spawner.theSpawner.Spawn(dt);
+        
         // take a copy of the ALL_OBJECTS list to avoid errors 
         // if new objects are created in the update
         List<GameObject> objects = new ArrayList<GameObject>(GameObject.ALL_OBJECTS);
         
         // update all objects
         for (GameObject g : objects) {
-            g.update(dt);
-        }        
+        	// Update player
+        	if (g instanceof Player) {
+            ((Player)g).update(dt,movement,aim);
+        	} else if (g instanceof Enemy) {
+        		((Enemy)g).update(dt,Player.thePlayer.getGlobalPosition());
+        	} else {
+        		g.update(dt);
+        	}
+        }
+        
+        // Check what has collided with the player
+        List<GameObject> colliders = collision(Player.thePlayer.getGlobalPosition());
+    	for (GameObject g : colliders) {
+    		// If an enemy collides with the player, game over
+    		if (g instanceof Enemy) {
+    			Player.thePlayer.destroy();
+    			((Enemy)g).setSpeed(1);
+    		}
+    	}
+    	
+    	// Check if powerup has collided with player (since powerups are smaller)
+    	for (GameObject g : objects) {
+    		List<GameObject> wepColliders = collision(g.getGlobalPosition());
+    		if (wepColliders.contains(Player.thePlayer)) {
+	    		if (g instanceof PiercingWeapon) {
+	    			Player.thePlayer.changeWeapon(Weapon.PIERCING);
+	    			Player.thePlayer.restartPowerupTimer();
+	    			g.destroy();
+	    		} else if (g instanceof BFGWeapon) {
+	    			Player.thePlayer.changeWeapon(Weapon.BFG);
+	    			Player.thePlayer.restartPowerupTimer();
+	    			g.destroy();
+	    		}
+    		}
+    	}
+    	
+    	
+    	// Check if any enemies have collided with a projectile
+    	for (GameObject g : objects) {
+    		if (g instanceof PiercingProjectile) {
+    			List<GameObject> contacted = collision(g.getGlobalPosition());
+    			for (GameObject h : contacted) {
+    				// If the projectile touched an enemy, we destroy it
+    				if (h instanceof Enemy) {
+    					h.destroy();
+    				}
+    			}
+    		} else if (g instanceof DefaultProjectile) {
+    			List<GameObject> contacted = collision(g.getGlobalPosition());
+    			for (GameObject h : contacted) {
+    				// If the projectile touched an enemy, we destroy it
+    				if (h instanceof Enemy) {
+    					h.destroy();
+    					g.destroy();
+    				}
+    			}
+    		}
+    	}
+
     }
 
     /**
@@ -137,5 +207,375 @@ public class GameEngine implements GLEventListener {
     	}
     	return list;
     }
+
+    /**
+     * Changes the movement and aim based on keys pressed
+     * 
+     */
+    @Override
+    public void keyPressed(KeyEvent e) {
+        switch (e.getKeyCode()) {
+
+        case KeyEvent.VK_LEFT:
+        	switch(aim) {
+        	case NONE:
+        		aim = Direction.LEFT;
+        		break;
+        	case UP:
+        		aim = Direction.LEFT_UP;
+        		break;
+        	case RIGHT_UP:
+        		aim = Direction.LEFT_UP;
+        		break;
+        	case RIGHT:
+        		aim = Direction.LEFT;
+        		break;
+        	case RIGHT_DOWN:
+        		aim = Direction.LEFT_DOWN;
+        		break;
+        	case DOWN:
+        		aim = Direction.LEFT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+
+        case KeyEvent.VK_RIGHT:
+        	
+        	switch(aim) {
+        	case NONE:
+        		aim = Direction.RIGHT;
+        		break;
+        	case UP:
+        		aim = Direction.RIGHT_UP;
+        		break;
+        	case LEFT_UP:
+        		aim = Direction.RIGHT_UP;
+        		break;
+        	case LEFT:
+        		aim = Direction.RIGHT;
+        		break;
+        	case LEFT_DOWN:
+        		aim = Direction.RIGHT_DOWN;
+        		break;
+        	case DOWN:
+        		aim = Direction.RIGHT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+            
+        case KeyEvent.VK_UP:
+        	
+        	switch(aim) {
+        	case NONE:
+        		aim = Direction.UP;
+        		break;
+        	case LEFT:
+        		aim = Direction.LEFT_UP;
+        		break;
+        	case LEFT_DOWN:
+        		aim = Direction.LEFT_UP;
+        		break;
+        	case DOWN:
+        		aim = Direction.UP;
+        		break;
+        	case RIGHT_DOWN:
+        		aim = Direction.RIGHT_UP;
+        		break;
+        	case RIGHT:
+        		aim = Direction.RIGHT_UP;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+        
+        case KeyEvent.VK_DOWN:
+        	
+        	switch(aim) {
+        	case NONE:
+        		aim = Direction.DOWN;
+        		break;
+        	case UP:
+        		aim = Direction.DOWN;
+        		break;
+        	case RIGHT_UP:
+        		aim = Direction.RIGHT_DOWN;
+        		break;
+        	case RIGHT:
+        		aim = Direction.RIGHT_DOWN;
+        		break;
+        	case LEFT_UP:
+        		aim = Direction.LEFT_DOWN;
+        		break;
+        	case LEFT:
+        		aim = Direction.LEFT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+            
+        case KeyEvent.VK_A:
+        	
+        	switch(movement) {
+        	case NONE:
+        		movement = Direction.LEFT;
+        		break;
+        	case UP:
+        		movement = Direction.LEFT_UP;
+        		break;
+        	case RIGHT_UP:
+        		movement = Direction.LEFT_UP;
+        		break;
+        	case RIGHT:
+        		movement = Direction.LEFT;
+        		break;
+        	case RIGHT_DOWN:
+        		movement = Direction.LEFT_DOWN;
+        		break;
+        	case DOWN:
+        		movement = Direction.LEFT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+
+        case KeyEvent.VK_D:
+        	
+        	switch(movement) {
+        	case NONE:
+        		movement = Direction.RIGHT;
+        		break;
+        	case UP:
+        		movement = Direction.RIGHT_UP;
+        		break;
+        	case LEFT_UP:
+        		movement = Direction.RIGHT_UP;
+        		break;
+        	case LEFT:
+        		movement = Direction.RIGHT;
+        		break;
+        	case LEFT_DOWN:
+        		movement = Direction.RIGHT_DOWN;
+        		break;
+        	case DOWN:
+        		movement = Direction.RIGHT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+            
+        case KeyEvent.VK_W:
+        	
+        	switch(movement) {
+        	case NONE:
+        		movement = Direction.UP;
+        		break;
+        	case LEFT:
+        		movement = Direction.LEFT_UP;
+        		break;
+        	case LEFT_DOWN:
+        		movement = Direction.LEFT_UP;
+        		break;
+        	case DOWN:
+        		movement = Direction.UP;
+        		break;
+        	case RIGHT_DOWN:
+        		movement = Direction.RIGHT_UP;
+        		break;
+        	case RIGHT:
+        		movement = Direction.RIGHT_UP;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+        
+        case KeyEvent.VK_S:
+        	
+        	switch(movement) {
+        	case NONE:
+        		movement = Direction.DOWN;
+        		break;
+        	case UP:
+        		movement = Direction.DOWN;
+        		break;
+        	case RIGHT_UP:
+        		movement = Direction.RIGHT_DOWN;
+        		break;
+        	case RIGHT:
+        		movement = Direction.RIGHT_DOWN;
+        		break;
+        	case LEFT_UP:
+        		movement = Direction.LEFT_DOWN;
+        		break;
+        	case LEFT:
+        		movement = Direction.LEFT_DOWN;
+        		break;
+       		default:
+       			break;
+        	}
+            break;
+                
+        }
+    }
+
+    /**
+     * 
+     */
+    @Override
+    public void keyReleased(KeyEvent e) {
+        switch (e.getKeyCode()) {
+
+        case KeyEvent.VK_LEFT:
+        	
+        	switch (aim) {
+        	case LEFT:
+        		aim = Direction.NONE;
+        		break;
+        	case LEFT_UP:
+        		aim = Direction.UP;
+        		break;
+        	case LEFT_DOWN:
+        		aim = Direction.DOWN;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_RIGHT:
+        	
+        	switch (aim) {
+        	case RIGHT:
+        		aim = Direction.NONE;
+        		break;
+        	case RIGHT_UP:
+        		aim = Direction.UP;
+        		break;
+        	case RIGHT_DOWN:
+        		aim = Direction.DOWN;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_UP:
+        	
+        	switch(aim) {
+        	case UP:
+        		aim = Direction.NONE;
+        		break;
+        	case LEFT_UP:
+        		aim = Direction.LEFT;
+        		break;
+        	case RIGHT_UP:
+        		aim = Direction.RIGHT;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_DOWN:
+        	
+        	switch(aim) {
+        	case DOWN:
+        		aim = Direction.NONE;
+        		break;
+        	case LEFT_DOWN:
+        		aim = Direction.LEFT;
+        		break;
+        	case RIGHT_DOWN:
+        		aim = Direction.RIGHT;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_A:
+        	
+        	switch (movement) {
+        	case LEFT:
+        		movement = Direction.NONE;
+        		break;
+        	case LEFT_UP:
+        		movement = Direction.UP;
+        		break;
+        	case LEFT_DOWN:
+        		movement = Direction.DOWN;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_D:
+        	
+        	switch (movement) {
+        	case RIGHT:
+        		movement = Direction.NONE;
+        		break;
+        	case RIGHT_UP:
+        		movement = Direction.UP;
+        		break;
+        	case RIGHT_DOWN:
+        		movement = Direction.DOWN;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_W:
+        	
+        	switch(movement) {
+        	case UP:
+        		movement = Direction.NONE;
+        		break;
+        	case LEFT_UP:
+        		movement = Direction.LEFT;
+        		break;
+        	case RIGHT_UP:
+        		movement = Direction.RIGHT;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        case KeyEvent.VK_S:
+        	
+        	switch(movement) {
+        	case DOWN:
+        		movement = Direction.NONE;
+        		break;
+        	case LEFT_DOWN:
+        		movement = Direction.LEFT;
+        		break;
+        	case RIGHT_DOWN:
+        		movement = Direction.RIGHT;
+        		break;
+        	default:
+        		break;
+        	}
+        	break;
+        	
+        	
+        }
+        
+    }
+
+	@Override
+	public void keyTyped(KeyEvent e) {
+	}
     
 }
